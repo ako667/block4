@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   useAccount,
   useConnect,
@@ -8,11 +8,13 @@ import {
   useReadContract,
   useChainId,
   useBalance,
+  usePublicClient,
 } from "wagmi";
 import { arbitrumSepolia } from "wagmi/chains";
 import { parseUnits, parseEther } from "viem";
 import { formatAddress, formatEthShort, formatProposalId, formatTokenShort } from "./format";
 import { useSubgraphMarkets } from "./hooks/useSubgraph";
+import { MarketsPanel } from "./components/MarketsPanel";
 import {
   CONTRACTS,
   marketAbi,
@@ -23,10 +25,26 @@ import {
   PAY_WITH_ETH,
   GOVERNOR_PROPOSAL_ID,
   PROPOSAL_STATE_LABELS,
+  DEFAULT_CHAIN,
 } from "./config";
-import { anvil } from "./chains";
+import { anvil, baseSepolia, sepolia } from "./chains";
 
-const SUPPORTED_CHAIN_IDS = [anvil.id, arbitrumSepolia.id] as const;
+const SUPPORTED_CHAIN_IDS = [sepolia.id, baseSepolia.id, anvil.id, arbitrumSepolia.id] as const;
+
+function preferredChainId(): number {
+  switch (DEFAULT_CHAIN) {
+    case "anvil":
+      return anvil.id;
+    case "base-sepolia":
+    case "basesepolia":
+      return baseSepolia.id;
+    case "sepolia":
+    default:
+      return sepolia.id;
+  }
+}
+
+const PREFERRED_CHAIN_ID = preferredChainId();
 
 function friendlyError(err: unknown): string {
   const msg = err instanceof Error ? err.message : String(err);
@@ -44,7 +62,8 @@ export default function App() {
   const { switchChain } = useSwitchChain();
   const [amount, setAmount] = useState("0.01");
   const [error, setError] = useState<string | null>(null);
-  const { markets, loading: subgraphLoading } = useSubgraphMarkets();
+  const { markets, loading: subgraphLoading, refreshing, refresh } = useSubgraphMarkets();
+  const publicClient = usePublicClient();
 
   const usdcOk = isConfigured(CONTRACTS.usdc);
   const marketOk = isConfigured(CONTRACTS.sampleMarket);
@@ -96,6 +115,16 @@ export default function App() {
   const wrongChain = isConnected && !SUPPORTED_CHAIN_IDS.includes(chainId as (typeof SUPPORTED_CHAIN_IDS)[number]);
   const onAnvil = chainId === anvil.id;
 
+  // After connect (or on reload), ask MetaMask to switch to VITE_DEFAULT_CHAIN (default: Sepolia)
+  useEffect(() => {
+    if (!isConnected || chainId === PREFERRED_CHAIN_ID) return;
+    try {
+      switchChain({ chainId: PREFERRED_CHAIN_ID });
+    } catch {
+      /* user rejected switch in MetaMask */
+    }
+  }, [isConnected, chainId, switchChain]);
+
   async function mintTestUsdc() {
     setError(null);
     if (!address) return;
@@ -132,19 +161,24 @@ export default function App() {
         });
       } else {
         const amt = parseUnits(amount, 6);
-        await writeContractAsync({
+        const approveHash = await writeContractAsync({
           address: CONTRACTS.usdc,
           abi: erc20Abi,
           functionName: "approve",
           args: [CONTRACTS.sampleMarket, amt],
         });
+        if (publicClient) {
+          await publicClient.waitForTransactionReceipt({ hash: approveHash });
+        }
         await writeContractAsync({
           address: CONTRACTS.sampleMarket,
           abi: marketAbi,
           functionName: "buyOutcome",
-          args: [0, amt, 1n],
+          args: [0, amt, 0n],
+          gas: 600_000n,
         });
         await refetchUsdc();
+        refresh();
       }
     } catch (e) {
       setError(friendlyError(e));
@@ -216,6 +250,20 @@ export default function App() {
         <button onClick={() => disconnect()}>Disconnect {address?.slice(0, 6)}…</button>
       )}
 
+      {isConnected && chainId === sepolia.id && (
+        <p className="hint">
+          Network: <strong>Sepolia</strong> (Ethereum testnet). Deploy with{" "}
+          <code>./scripts/deploy-ethereum-sepolia.sh</code>, then Goldsky + subgraph for Markets
+          below.
+        </p>
+      )}
+
+      {isConnected && chainId === baseSepolia.id && (
+        <p className="hint">
+          Network: <strong>Base Sepolia</strong> — correct chain for testnet deploy and subgraph.
+        </p>
+      )}
+
       {!contractsReady && (
         <div className="banner warn">
           <strong>Contracts not configured.</strong> Start Anvil, then run:
@@ -226,9 +274,17 @@ export default function App() {
 
       {wrongChain && (
         <div className="banner warn">
-          Wrong network. Switch to <strong>Anvil</strong> (local) or <strong>Arbitrum Sepolia</strong>.
-          <button onClick={() => switchChain({ chainId: anvil.id })}>Anvil</button>
-          <button onClick={() => switchChain({ chainId: arbitrumSepolia.id })}>Arbitrum Sepolia</button>
+          Wrong network. Switch to <strong>Sepolia</strong>, <strong>Base Sepolia</strong>, or{" "}
+          <strong>Anvil</strong>.
+          <button type="button" onClick={() => switchChain({ chainId: sepolia.id })}>
+            Sepolia
+          </button>
+          <button type="button" onClick={() => switchChain({ chainId: baseSepolia.id })}>
+            Base Sepolia
+          </button>
+          <button type="button" onClick={() => switchChain({ chainId: anvil.id })}>
+            Anvil
+          </button>
         </div>
       )}
 
@@ -323,20 +379,12 @@ export default function App() {
         </button>
       </section>
 
-      <section>
-        <h2>Markets (The Graph)</h2>
-        {subgraphLoading && <p>Loading indexed markets…</p>}
-        {!subgraphLoading && markets.length === 0 && (
-          <p>No markets indexed yet. Deploy subgraph after testnet deploy.</p>
-        )}
-        <ul>
-          {markets.map((m) => (
-            <li key={m.id}>
-              <strong>{m.question}</strong> — state: {m.state}, trades: {m.tradeCount}
-            </li>
-          ))}
-        </ul>
-      </section>
+      <MarketsPanel
+        markets={markets}
+        loading={subgraphLoading}
+        onRefresh={refresh}
+        refreshing={refreshing}
+      />
     </div>
   );
 }

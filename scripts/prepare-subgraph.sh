@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Refresh ABIs and patch subgraph.yaml from deployments/base-sepolia.env
+# Refresh ABIs and patch subgraph.yaml from deployments/*.env
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -7,10 +7,10 @@ forge build -q
 cp out/PredictionMarketFactory.sol/PredictionMarketFactory.json subgraph/abis/
 cp out/PredictionMarket.sol/PredictionMarket.json subgraph/abis/
 
-ENV_FILE="${1:-deployments/base-sepolia.env}"
+ENV_FILE="${1:-deployments/ethereum-sepolia.env}"
 if [[ ! -f "$ENV_FILE" ]]; then
   echo "Missing $ENV_FILE"
-  echo "Deploy to Base Sepolia first: ./scripts/deploy-base-sepolia.sh"
+  echo "Deploy first: ./scripts/deploy-ethereum-sepolia.sh"
   exit 1
 fi
 
@@ -21,16 +21,19 @@ set +a
 
 [[ -n "${FACTORY:-}" ]] || { echo "Set FACTORY=0x... in $ENV_FILE"; exit 1; }
 START_BLOCK="${START_BLOCK:-0}"
+SUBGRAPH_NETWORK="${SUBGRAPH_NETWORK:-sepolia}"
 
-export FACTORY START_BLOCK
+export FACTORY START_BLOCK SUBGRAPH_NETWORK
 python3 <<'PY'
 import os, re
 from pathlib import Path
 
 factory = os.environ["FACTORY"].lower()
 block = os.environ.get("START_BLOCK", "0")
+network = os.environ.get("SUBGRAPH_NETWORK", "sepolia")
 p = Path("subgraph/subgraph.yaml")
 text = p.read_text()
+text = re.sub(r"network: [a-z0-9-]+", f"network: {network}", text)
 text = re.sub(
     r"(name: PredictionMarketFactory\n    network: [^\n]+\n    source:\n      address: )\"[^\"]+\"",
     rf'\1"{factory}"',
@@ -44,7 +47,7 @@ text = re.sub(
     count=1,
 )
 p.write_text(text)
-print(f"Updated subgraph.yaml: factory={factory} startBlock={block}")
+print(f"Updated subgraph.yaml: network={network} factory={factory} startBlock={block}")
 PY
 
 chmod +x scripts/prepare-subgraph.sh 2>/dev/null || true

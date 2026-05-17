@@ -4,11 +4,11 @@ schema:
 dataSources:
   - kind: ethereum
     name: PredictionMarketFactory
-    network: base-sepolia
+    network: sepolia
     source:
-      address: "0x7e392657611208e4a80b7fba4f867661049770c3"
+      address: "0xdf2654197837e8091de28f1728feb71467101404"
       abi: PredictionMarketFactory
-      startBlock: 0
+      startBlock: 10869541
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7
@@ -29,7 +29,7 @@ dataSources:
 templates:
   - kind: ethereum/contract
     name: PredictionMarket
-    network: base-sepolia
+    network: sepolia
     source:
       abi: PredictionMarket
     mapping:

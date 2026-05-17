@@ -71,7 +71,9 @@ contract PredictionMarketFactory is AccessControl {
         uint256 endTime,
         uint256 initialLiquidity
     ) external onlyRole(MARKET_CREATOR_ROLE) returns (uint256 marketId, address market) {
-        (marketId, market) = _deployMarket(question, category, strikePrice, yesWinsIfAbove, endTime, initialLiquidity, bytes32(0), false);
+        (marketId, market) = _deployMarket(
+            question, category, strikePrice, yesWinsIfAbove, endTime, initialLiquidity, bytes32(0), false
+        );
     }
 
     function createMarketDeterministic(
@@ -83,7 +85,9 @@ contract PredictionMarketFactory is AccessControl {
         uint256 initialLiquidity,
         bytes32 salt
     ) external onlyRole(MARKET_CREATOR_ROLE) returns (uint256 marketId, address market) {
-        (marketId, market) = _deployMarket(question, category, strikePrice, yesWinsIfAbove, endTime, initialLiquidity, salt, true);
+        (marketId, market) = _deployMarket(
+            question, category, strikePrice, yesWinsIfAbove, endTime, initialLiquidity, salt, true
+        );
     }
 
     function predictMarketAddress(bytes32 salt, bytes memory initData) external view returns (address) {

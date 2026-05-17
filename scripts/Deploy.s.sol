@@ -61,12 +61,7 @@ contract DeployScript is Script {
 
         usdc.approve(address(factory), 2_000e6);
         (uint256 sampleMarketId, address sampleMarket) = factory.createMarket(
-            "Will ETH exceed $5000 on testnet?",
-            "crypto",
-            5_000e8,
-            1,
-            block.timestamp + 30 days,
-            1_000e6
+            "Will ETH exceed $5000 on testnet?", "crypto", 5_000e8, 1, block.timestamp + 30 days, 1_000e6
         );
 
         vm.stopBroadcast();

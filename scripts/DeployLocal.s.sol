@@ -18,8 +18,7 @@ import {LocalMarketGovernor} from "../contracts/governance/LocalMarketGovernor.s
 /// @notice Deploy full stack to local Anvil + write frontend/.env
 /// ./scripts/deploy-anvil.sh — runs runDeploy() then runPropose() after mining blocks
 contract DeployLocalScript is Script {
-    uint256 internal constant DEPLOYER_KEY =
-        0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80;
+    uint256 internal constant DEPLOYER_KEY = 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80;
 
     function run() external {
         runDeploy();
@@ -63,14 +62,8 @@ contract DeployLocalScript is Script {
         uint256 liq = 10 ether;
         weth.deposit{value: liq}();
         weth.approve(address(factory), liq);
-        (, address marketAddr) = factory.createMarket(
-            "ETH above 4000 by Friday?",
-            "Crypto",
-            4_000e8,
-            1,
-            block.timestamp + 7 days,
-            liq
-        );
+        (, address marketAddr) =
+            factory.createMarket("ETH above 4000 by Friday?", "Crypto", 4_000e8, 1, block.timestamp + 7 days, liq);
 
         address[5] memory voters = [
             0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266,
@@ -125,9 +118,8 @@ contract DeployLocalScript is Script {
         calldatas[0] = abi.encodeWithSignature("setSwapFeeBps(uint256)", uint256(25));
 
         vm.startBroadcast(DEPLOYER_KEY);
-        uint256 proposalId = LocalMarketGovernor(payable(governor)).propose(
-            targets, values, calldatas, "Demo: set swap fee to 0.25%"
-        );
+        uint256 proposalId =
+            LocalMarketGovernor(payable(governor)).propose(targets, values, calldatas, "Demo: set swap fee to 0.25%");
         vm.stopBroadcast();
 
         _writeFrontendEnv(weth, token, governor, factory, marketAddr, proposalId);

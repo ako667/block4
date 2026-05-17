@@ -19,12 +19,14 @@ runs = 64
 depth = 32
 
 [rpc_endpoints]
+sepolia = "${SEPOLIA_RPC}"
 arbitrum_sepolia = "${ARBITRUM_SEPOLIA_RPC}"
 base_sepolia = "${BASE_SEPOLIA_RPC_URL}"
 optimism_sepolia = "${OPTIMISM_SEPOLIA_RPC}"
 mainnet = "${MAINNET_RPC}"
 
 [etherscan]
+sepolia = { key = "${ETHERSCAN_API_KEY}" }
 arbitrum_sepolia = { key = "${ARBISCAN_API_KEY}" }
 # Base Sepolia: use BASESCAN_API_KEY, or ETHERSCAN_API_KEY from https://etherscan.io/myapikey (API v2)
 base_sepolia = { key = "${BASESCAN_API_KEY}", url = "https://api.etherscan.io/v2/api", chain = 84532 }

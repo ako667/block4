@@ -18,10 +18,7 @@ contract FeeVault is ERC4626, AccessControl, ReentrancyGuard {
 
     event FeesDeposited(address indexed from, uint256 amount);
 
-    constructor(IERC20 asset_, address admin)
-        ERC4626(asset_)
-        ERC20("Prediction Market Fee Vault", "pmFEE")
-    {
+    constructor(IERC20 asset_, address admin) ERC4626(asset_) ERC20("Prediction Market Fee Vault", "pmFEE") {
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _grantRole(FEE_COLLECTOR_ROLE, admin);
     }

@@ -9,10 +9,30 @@ export const PAY_WITH_ETH = import.meta.env.VITE_PAY_WITH_ETH === "true";
 
 const infuraKey = import.meta.env.VITE_INFURA_API_KEY as string | undefined;
 
-/** Arbitrum Sepolia via Infura (used when not on local Anvil) */
+/** Base Sepolia via Infura — primary testnet for deploy + subgraph */
+export const BASE_SEPOLIA_RPC = infuraKey
+  ? `https://base-sepolia.infura.io/v3/${infuraKey}`
+  : "https://sepolia.base.org";
+
+/** Ethereum Sepolia via Infura (faucet ETH often lands here — not the same as Base Sepolia) */
+export const SEPOLIA_RPC = infuraKey
+  ? `https://sepolia.infura.io/v3/${infuraKey}`
+  : "https://ethereum-sepolia.publicnode.com";
+
+/** Arbitrum Sepolia via Infura (optional) */
 export const ARBITRUM_SEPOLIA_RPC = infuraKey
   ? `https://arbitrum-sepolia.infura.io/v3/${infuraKey}`
   : undefined;
+
+/**
+ * Network to switch to after Connect.
+ * - sepolia — Ethereum Sepolia (chain 11155111), MetaMask label "Sepolia"
+ * - base-sepolia — Base Sepolia (84532), required for deploy-base-sepolia.sh
+ * - anvil — local demo
+ */
+export const DEFAULT_CHAIN = (
+  (import.meta.env.VITE_DEFAULT_CHAIN as string | undefined)?.toLowerCase() ?? "sepolia"
+).trim();
 
 export const contractsReady =
   isConfigured(
@@ -127,6 +147,13 @@ export const marketAbi = [
   {
     type: "function",
     name: "reserveNo",
+    inputs: [],
+    outputs: [{ type: "uint256" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "endTime",
     inputs: [],
     outputs: [{ type: "uint256" }],
     stateMutability: "view",

@@ -45,7 +45,7 @@ contract ChainlinkAdapter is IChainlinkAdapter, AccessControl {
     }
 
     function isStale() public view returns (bool) {
-        (,,,uint256 updatedAt,) = feed.latestRoundData();
+        (,,, uint256 updatedAt,) = feed.latestRoundData();
         return block.timestamp - updatedAt > maxStaleness;
     }
 

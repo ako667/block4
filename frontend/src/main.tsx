@@ -4,17 +4,19 @@ import { WagmiProvider, createConfig, http } from "wagmi";
 import { arbitrumSepolia } from "wagmi/chains";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { injected } from "wagmi/connectors";
-import { anvil } from "./chains";
-import { ARBITRUM_SEPOLIA_RPC } from "./config";
+import { anvil, baseSepolia, sepolia } from "./chains";
+import { ARBITRUM_SEPOLIA_RPC, BASE_SEPOLIA_RPC, SEPOLIA_RPC } from "./config";
 import App from "./App";
 import "./styles.css";
 
 const config = createConfig({
-  chains: [anvil, arbitrumSepolia],
+  chains: [sepolia, baseSepolia, anvil, arbitrumSepolia],
   connectors: [injected()],
   transports: {
+    [sepolia.id]: http(SEPOLIA_RPC),
+    [baseSepolia.id]: http(BASE_SEPOLIA_RPC),
     [anvil.id]: http("http://127.0.0.1:8545"),
-    [arbitrumSepolia.id]: http(ARBITRUM_SEPOLIA_RPC),
+    [arbitrumSepolia.id]: http(ARBITRUM_SEPOLIA_RPC ?? "https://sepolia-rollup.arbitrum.io/rpc"),
   },
 });
 

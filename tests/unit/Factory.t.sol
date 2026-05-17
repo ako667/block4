@@ -19,9 +19,7 @@ contract FactoryTest is BaseSetup {
         collateral.approve(address(factory), 200e6);
         uint256 id;
         address m1;
-        (id, m1) = factory.createMarketDeterministic(
-            "Q1", "Crypto", 4000e8, 1, block.timestamp + 1 days, 100e6, salt
-        );
+        (id, m1) = factory.createMarketDeterministic("Q1", "Crypto", 4000e8, 1, block.timestamp + 1 days, 100e6, salt);
         vm.stopPrank();
         assertTrue(m1 != address(0));
         assertEq(id, 1);

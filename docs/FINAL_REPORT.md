@@ -4,13 +4,13 @@
 
 | Field | Value |
 |-------|--------|
-| **GitHub Repository** | `https://github.com/240956-hash/EndTerm.Blockchain2.git` |
+| **GitHub Repository** | `https://github.com/ako667/block4` |
 | **Student Name / Group** | Aktoty Omar, SE-2432 |
 | **Scenario** | Option D — On-Chain Prediction Market |
 | **Primary L2 Network** | Base Sepolia (Infura RPC) |
-| **Public Frontend dApp URL** | `[INSERT URL — e.g. Vercel deployment]` |
-| **Verified Factory (Base Sepolia)** | `[INSERT ADDRESS after deploy]` |
-| **The Graph Subgraph Endpoint** | `[INSERT Studio query URL]` |
+| **Public Frontend dApp URL** | Pending Vercel — local demo: `http://localhost:5173` |
+| **Verified Factory (Base Sepolia)** | Pending on-chain deploy — see §22 |
+| **The Graph Subgraph Endpoint** | `https://api.goldsky.com/api/public/project_cmp9rntoj7gae01tk0roj6ifk/subgraphs/prediction-market/1.0.0/gn` (Goldsky; GraphQL-compatible) |
 | **Local Demo** | Anvil `http://127.0.0.1:8545` + `http://localhost:5173` |
 
 ---
@@ -681,11 +681,93 @@ query ActiveMarkets {
 
 ## 22. End-to-End Environment Matrix
 
-| Environment | RPC / URL | Frontend | Contracts | Subgraph |
-|-------------|-----------|----------|-----------|----------|
-| Local Anvil | `http://127.0.0.1:8545` | `http://localhost:5173` | `./scripts/deploy-anvil.sh` | Not required |
-| Base Sepolia | Infura `BASE_SEPOLIA_RPC_URL` | `[INSERT URL]` | `Deploy.s.sol` broadcast | `[INSERT Studio URL]` |
-| CI | GitHub ubuntu-latest | `npm run build` | `forge test` | — |
+The structural boundaries governing target execution paths are outlined below:
+
+- **Local Development Environment:** Anchored around an active local Anvil RPC execution hub (`http://127.0.0.1:8545`, chain ID **31337**). Operates standard local React/Vite development configurations (`http://localhost:5173`) communicating directly with contract frameworks populated via `./scripts/deploy-anvil.sh` (deterministic `DeployLocal.s.sol` + demo governance proposal). Mock structures (`MockWETH`, `MockV3Aggregator`, `LocalMarketGovernor`) proxy for live decentralized data streams. The Graph subgraph is **not required** locally — the Markets section may show “not indexed yet.”
+
+- **Production / Target Testnet Infrastructure:** Routed via Infura (`BASE_SEPOLIA_RPC_URL` in `.env`) into the **Base Sepolia** Layer 2 framework (chain ID **84532**). Contracts deploy with `./scripts/deploy-base-sepolia.sh` (`Deploy.s.sol` + `MarketGovernor`). Production interfaces are intended to publish through hosted **Vercel** components; until deployed, the same React dApp runs locally with MetaMask on Base Sepolia. Off-chain indexing uses a **Goldsky**-hosted subgraph on `base-sepolia` (The Graph Studio was unavailable; schema and mappings are Graph-compatible).
+
+### 22.1 Summary matrix
+
+| Environment | Chain ID | RPC / URL | Frontend | Contract deploy | Subgraph / indexer |
+|-------------|----------|-----------|----------|-----------------|-------------------|
+| **Local Anvil** | 31337 | `http://127.0.0.1:8545` | `http://localhost:5173` | `./scripts/deploy-anvil.sh` | Not required |
+| **Base Sepolia (testnet)** | 84532 | `https://base-sepolia.infura.io/v3/<INFURA_KEY>` (`BASE_SEPOLIA_RPC_URL`) | Pending Vercel — local + MetaMask | `./scripts/deploy-base-sepolia.sh` | Goldsky public GraphQL (see §22.3) |
+| **CI (GitHub Actions)** | — | `ubuntu-latest` (`.github/workflows/ci.yml`) | `cd frontend && npm ci && npm run build` | `forge fmt --check && forge build && forge test -vv` | — |
+
+### 22.2 Local development — contract & tooling detail
+
+| Component | Value / command |
+|-----------|-----------------|
+| **Start RPC** | `anvil` |
+| **Deploy stack** | `./scripts/deploy-anvil.sh` → `DeployLocal.s.sol` (`runDeploy` + `runPropose`) |
+| **Frontend env** | Auto-written `frontend/.env` (`VITE_*`, `VITE_PAY_WITH_ETH=true`) |
+| **Governor type** | `LocalMarketGovernor` (instant Active proposals for UI demos) |
+| **Oracle** | `MockV3Aggregator` + `ChainlinkAdapter` (no live Sepolia feed) |
+| **Post-deploy verify** | Use `Deploy.s.sol` addresses + `VerifyPostDeploy.s.sol` (see §22.4) — **not** valid after `deploy-anvil.sh` alone |
+| **Wallet** | MetaMask custom network Anvil; import Anvil account #0–#4 |
+| **Repository** | `https://github.com/ako667/block4` |
+
+**Typical local addresses** (change every `deploy-anvil.sh` run — example from last local deploy):
+
+| Contract | Address (example) |
+|----------|-------------------|
+| WETH / USDC (collateral) | `0x5FbDB2315678afecb367f032d93F642f64180aa3` |
+| PMT (`GovernanceToken`) | `0x2279B7A0a67DB372996a5FaB50D91eAA73d2eBe6` |
+| Governor (`LocalMarketGovernor`) | `0x8A791620dd6260079BF849Dc5567aDC3F2FdC318` |
+| Factory | `0x610178dA211FEF7D417bC0e6FeD39F05609AD788` |
+| Sample market | `0x6F1216D1BFe15c98520CA1434FC1d9D57AC95321` |
+
+### 22.3 Base Sepolia (testnet) — contract & indexer detail
+
+| Component | Value / command |
+|-----------|-----------------|
+| **RPC** | `BASE_SEPOLIA_RPC_URL` in `prediction-market/.env` (Infura) |
+| **Deploy** | `./scripts/deploy-base-sepolia.sh` (funded wallet; not Anvil key `0xac0974…`) |
+| **Deploy script** | `scripts/Deploy.s.sol` → `MarketGovernor`, timelock 2 days, sample market |
+| **Explorer** | `https://sepolia.basescan.org` |
+| **Subgraph prep** | `./scripts/prepare-subgraph.sh deployments/base-sepolia.env` |
+| **Indexer host** | Goldsky — `goldsky subgraph deploy prediction-market/1.0.0 --path subgraph/ --start-block <FACTORY_DEPLOY_BLOCK>` |
+| **GraphQL endpoint** | `https://api.goldsky.com/api/public/project_cmp9rntoj7gae01tk0roj6ifk/subgraphs/prediction-market/1.0.0/gn` |
+| **Frontend** | `VITE_SUBGRAPH_URL` = Goldsky URL above; contract `VITE_*` from deploy logs |
+| **Public dApp** | Pending Vercel deployment of `frontend/dist` |
+
+**Base Sepolia addresses** (fill after successful `ONCHAIN EXECUTION COMPLETE` — placeholders below are **not** valid until broadcast):
+
+| Contract | Address / status |
+|----------|------------------|
+| Factory | *Pending funded deploy* — target file: `deployments/base-sepolia.env` |
+| Sample market | *Pending funded deploy* |
+| Mock USDC | *Pending funded deploy* |
+| `START_BLOCK` (subgraph) | First Factory tx block on Basescan |
+
+### 22.4 Production-style verification on Anvil (`Deploy.s.sol`)
+
+Used for §19 post-deploy screenshot (`VerifyPostDeploy.s.sol`). Requires **`MarketGovernor`** (from `Deploy.s.sol`, not `deploy-anvil.sh`):
+
+| Contract | Address (example — one Anvil `Deploy.s.sol` run) |
+|----------|-----------------------------------------------------|
+| Factory | `0xf5059a5D33d5853360D16C683c16e67980206f36` |
+| Governor (`MarketGovernor`) | `0x851356ae760d987E095750cCeb3bC6014560891C` |
+| Timelock | `0xa82fF9aFd8f496c3d6ac40E2a0F282E47488CFc9` |
+| Sample market | `0x55652FF92Dc17a21AD6810Cce2F4703fa2339CAE` |
+
+```bash
+export TIMELOCK=0xa82fF9aFd8f496c3d6ac40E2a0F282E47488CFc9
+export GOVERNOR=0x851356ae760d987E095750cCeb3bC6014560891C
+export FACTORY=0xf5059a5D33d5853360D16C683c16e67980206f36
+forge script scripts/VerifyPostDeploy.s.sol --rpc-url http://127.0.0.1:8545 -vv
+# Expected log: Post-deploy verification: OK
+```
+
+### 22.5 CI / DevOps
+
+| Step | Command / location |
+|------|-------------------|
+| Workflow | `.github/workflows/ci.yml` |
+| Repository | `https://github.com/ako667/block4` |
+| Local equivalent | `forge fmt --check && forge build && forge test -vv` (117 passed, 3 fork skipped) |
+| Frontend gate | `cd frontend && npm ci && npm run build` |
 
 ---
 
@@ -693,9 +775,9 @@ query ActiveMarkets {
 
 | Item | Status | Action |
 |------|--------|--------|
-| Base Sepolia verified addresses | `[FILL]` | Deploy + verify + paste in cover table |
-| Subgraph on `base-sepolia` | Pending | Update `subgraph.yaml` network + factory address |
-| Public Vercel URL | `[FILL]` | Deploy `frontend/dist` |
+| Base Sepolia verified addresses | Pending | Fund wallet → `./scripts/deploy-base-sepolia.sh` → Basescan verify → §22.3 |
+| Subgraph on `base-sepolia` | Deployed on Goldsky | Re-deploy with real `FACTORY` + `start-block` after testnet broadcast |
+| Public Vercel URL | Pending | Deploy `frontend/dist`; until then use `http://localhost:5173` |
 | Fork tests (3) | Skipped offline | Run with RPC in `.env` or document skip |
 | README "in progress" text | Outdated | Use this report + `CHECKLIST.md` |
 

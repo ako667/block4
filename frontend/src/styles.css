@@ -9,7 +9,7 @@ body {
 }
 
 .app {
-  max-width: 720px;
+  max-width: 880px;
   margin: 0 auto;
   padding: 2rem 1.25rem 4rem;
 }
@@ -136,4 +136,230 @@ section .actions {
   flex-wrap: wrap;
   gap: 0.5rem;
   margin-top: 0.75rem;
+}
+
+/* Markets panel */
+.markets-section {
+  margin-top: 1.75rem;
+  padding: 1.25rem;
+  border: 1px solid #1e293b;
+  border-radius: 16px;
+  background: linear-gradient(165deg, #111827 0%, #0f172a 55%, #0b1224 100%);
+}
+
+.markets-section__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.markets-section__header h2 {
+  margin: 0 0 0.25rem;
+}
+
+.markets-section__sub {
+  margin: 0;
+}
+
+.btn-ghost {
+  background: transparent;
+  border: 1px solid #334155;
+  color: #94a3b8;
+  flex-shrink: 0;
+}
+
+.btn-ghost:hover:not(:disabled) {
+  border-color: #3b82f6;
+  color: #e2e8f0;
+}
+
+.markets-grid {
+  display: grid;
+  gap: 1rem;
+}
+
+.markets-loading,
+.markets-empty {
+  color: #94a3b8;
+  text-align: center;
+  padding: 2rem 1rem;
+}
+
+.markets-loading__pulse {
+  width: 48px;
+  height: 48px;
+  margin: 0 auto 1rem;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, #3b82f6, #1d4ed8);
+  animation: pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    transform: scale(0.92);
+    opacity: 0.7;
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 1;
+  }
+}
+
+.market-card {
+  padding: 1.1rem 1.15rem;
+  border-radius: 14px;
+  border: 1px solid #243044;
+  background: #0f172a;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.market-card--selected {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 1px #3b82f6, 0 12px 40px rgba(59, 130, 246, 0.15);
+}
+
+.market-card__head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.65rem;
+}
+
+.market-badge {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+}
+
+.badge-open {
+  background: #14532d;
+  color: #86efac;
+}
+
+.badge-resolved {
+  background: #1e3a5f;
+  color: #93c5fd;
+}
+
+.badge-other {
+  background: #422006;
+  color: #fde68a;
+}
+
+.market-category {
+  font-size: 0.75rem;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.market-card__question {
+  margin: 0 0 1rem;
+  font-size: 1.15rem;
+  line-height: 1.35;
+}
+
+.odds-block {
+  margin-bottom: 1rem;
+}
+
+.odds-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin-bottom: 0.4rem;
+}
+
+.odds-yes {
+  color: #4ade80;
+}
+
+.odds-no {
+  color: #f87171;
+}
+
+.odds-bar {
+  height: 12px;
+  border-radius: 999px;
+  background: #1e293b;
+  overflow: hidden;
+  display: flex;
+}
+
+.odds-bar__yes {
+  height: 100%;
+  background: linear-gradient(90deg, #16a34a, #4ade80);
+  border-radius: 999px 0 0 999px;
+  transition: width 0.5s ease;
+  min-width: 2px;
+}
+
+.odds-caption {
+  margin: 0.45rem 0 0;
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+.market-stats {
+  list-style: none;
+  margin: 0 0 0.75rem;
+  padding: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem 1rem;
+}
+
+.market-stats li {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.market-stats__label {
+  font-size: 0.72rem;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.market-stats__value {
+  font-size: 0.95rem;
+  font-variant-numeric: tabular-nums;
+  color: #e2e8f0;
+}
+
+.market-hint {
+  margin: 0 0 0.75rem;
+  padding: 0.55rem 0.65rem;
+  border-radius: 8px;
+  background: #1e293b;
+  font-size: 0.82rem;
+  color: #94a3b8;
+}
+
+.market-card__foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  padding-top: 0.65rem;
+  border-top: 1px solid #1e293b;
+  font-size: 0.8rem;
+}
+
+.market-card__foot a {
+  color: #60a5fa;
+  text-decoration: none;
+}
+
+.market-card__foot a:hover {
+  text-decoration: underline;
 }

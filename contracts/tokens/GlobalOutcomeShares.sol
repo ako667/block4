@@ -35,12 +35,7 @@ contract GlobalOutcomeShares is ERC1155, AccessControl {
         _grantRole(BURNER_ROLE, engine);
     }
 
-    function supportsInterface(bytes4 interfaceId)
-        public
-        view
-        override(ERC1155, AccessControl)
-        returns (bool)
-    {
+    function supportsInterface(bytes4 interfaceId) public view override(ERC1155, AccessControl) returns (bool) {
         return super.supportsInterface(interfaceId);
     }
 }

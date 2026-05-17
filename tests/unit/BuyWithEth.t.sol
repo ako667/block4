@@ -26,7 +26,14 @@ contract BuyWithEthTest is Test {
         GlobalOutcomeShares shares = new GlobalOutcomeShares(admin);
         PredictionMarket impl = new PredictionMarket();
         PredictionMarketFactory f = new PredictionMarketFactory(
-            address(impl), address(shares), address(weth), address(adapter), address(vault), admin, address(0), address(marketOracle)
+            address(impl),
+            address(shares),
+            address(weth),
+            address(adapter),
+            address(vault),
+            admin,
+            address(0),
+            address(marketOracle)
         );
         shares.grantRole(shares.DEFAULT_ADMIN_ROLE(), address(f));
         marketOracle.grantRole(marketOracle.DEFAULT_ADMIN_ROLE(), address(f));

@@ -34,7 +34,7 @@ contract PredictionMarket is
     uint256 public constant LP_FEE_BPS = 30;
 
     uint256 public marketId;
-    uint256 public swapFeeBps = 30; 
+    uint256 public swapFeeBps = 30;
 
     IERC20 public collateral;
     GlobalOutcomeShares public outcomes;
@@ -119,10 +119,7 @@ contract PredictionMarket is
         lpMinted = _addLiquidityInternal(msg.sender, amount, true);
     }
 
-    function _addLiquidityInternal(address provider, uint256 amount, bool pull)
-        internal
-        returns (uint256 lpMinted)
-    {
+    function _addLiquidityInternal(address provider, uint256 amount, bool pull) internal returns (uint256 lpMinted) {
         if (amount == 0) revert ZeroLiquidity();
         if (pull) {
             collateral.safeTransferFrom(provider, address(this), amount);
@@ -194,11 +191,7 @@ contract PredictionMarket is
     }
 
     /// @notice Swap USDC for outcome shares (YES if isYes, else NO)
-    function swap(bool isYes, uint256 collateralIn, uint256 minOut)
-        external
-        whenNotPaused
-        returns (uint256 amountOut)
-    {
+    function swap(bool isYes, uint256 collateralIn, uint256 minOut) external whenNotPaused returns (uint256 amountOut) {
         return buyOutcome(isYes ? OUTCOME_YES : OUTCOME_NO, collateralIn, minOut);
     }
 

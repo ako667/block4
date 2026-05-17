@@ -19,9 +19,7 @@ contract MoreCoverageTest is BaseSetup {
         (, PredictionMarket market) = _createMarket(admin, 100e6);
         assertTrue(market.hasRole(upgrader, admin));
         vm.prank(admin);
-        market.upgradeToAndCall(
-            address(implV2), abi.encodeCall(PredictionMarketV2.initializeV2, ("chainlink", 1e9))
-        );
+        market.upgradeToAndCall(address(implV2), abi.encodeCall(PredictionMarketV2.initializeV2, ("chainlink", 1e9)));
         PredictionMarketV2 upgraded = PredictionMarketV2(address(market));
         assertEq(upgraded.version(), "2.0.0");
         vm.prank(admin);
