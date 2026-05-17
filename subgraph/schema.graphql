@@ -1,0 +1,55 @@
+type Market @entity {
+  id: ID!
+  marketId: BigInt!
+  question: String!
+  category: String!
+  strikePrice: BigInt!
+  endTime: BigInt!
+  reserveYes: BigInt!
+  reserveNo: BigInt!
+  state: String!
+  volume: BigInt!
+  winningOutcome: Int
+  trades: [Trade!]! @derivedFrom(field: "market")
+  liquidityPositions: [LiquidityPosition!]! @derivedFrom(field: "market")
+  createdAt: BigInt!
+  creator: Bytes!
+}
+
+type Trade @entity {
+  id: ID!
+  market: Market!
+  trader: Bytes!
+  outcomeId: Int!
+  amountIn: BigInt!
+  amountOut: BigInt!
+  isBuy: Boolean!
+  timestamp: BigInt!
+  txHash: Bytes!
+}
+
+type LiquidityPosition @entity {
+  id: ID!
+  market: Market!
+  provider: Bytes!
+  collateral: BigInt!
+  lpTokens: BigInt!
+  isAdd: Boolean!
+  timestamp: BigInt!
+}
+
+type Resolution @entity {
+  id: ID!
+  market: Market!
+  winningOutcome: Int!
+  oraclePrice: BigInt!
+  finalized: Boolean!
+  timestamp: BigInt!
+}
+
+type ProtocolStats @entity {
+  id: ID!
+  totalMarkets: BigInt!
+  totalTrades: BigInt!
+  totalVolume: BigInt!
+}

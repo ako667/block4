@@ -1,0 +1,11 @@
+cache/
+out/
+broadcast/
+node_modules/
+frontend/dist/
+frontend/.env
+.env
+*.log
+.DS_Store
+coverage/
+lcov.info

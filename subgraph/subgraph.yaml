@@ -1,0 +1,58 @@
+specVersion: 0.0.5
+schema:
+  file: ./schema.graphql
+dataSources:
+  - kind: ethereum
+    name: PredictionMarketFactory
+    network: arbitrum-sepolia
+    source:
+      address: "0x0000000000000000000000000000000000000000"
+      abi: PredictionMarketFactory
+      startBlock: 0
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - Market
+        - ProtocolStats
+      abis:
+        - name: PredictionMarketFactory
+          file: ./abis/PredictionMarketFactory.json
+        - name: PredictionMarket
+          file: ./abis/PredictionMarket.json
+      eventHandlers:
+        - event: MarketCreated(indexed address,indexed address,bytes32,string)
+          handler: handleMarketCreated
+      file: ./src/mapping.ts
+
+templates:
+  - kind: ethereum/contract
+    name: PredictionMarket
+    network: arbitrum-sepolia
+    source:
+      abi: PredictionMarket
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - Market
+        - Trade
+        - LiquidityEvent
+        - Resolution
+      abis:
+        - name: PredictionMarket
+          file: ./abis/PredictionMarket.json
+      eventHandlers:
+        - event: OutcomeBought(indexed address,uint8,uint256,uint256)
+          handler: handleOutcomeBought
+        - event: OutcomeSold(indexed address,uint8,uint256,uint256)
+          handler: handleOutcomeSold
+        - event: LiquidityAdded(indexed address,uint256,uint256)
+          handler: handleLiquidityAdded
+        - event: LiquidityRemoved(indexed address,uint256,uint256)
+          handler: handleLiquidityRemoved
+        - event: MarketResolved(uint8)
+          handler: handleMarketResolved
+      file: ./src/mapping.ts

@@ -1,0 +1,314 @@
+import { useState } from "react";
+import {
+  useAccount,
+  useConnect,
+  useDisconnect,
+  useSwitchChain,
+  useWriteContract,
+  useReadContract,
+  useChainId,
+  useBalance,
+} from "wagmi";
+import { arbitrumSepolia } from "wagmi/chains";
+import { parseUnits, parseEther, formatUnits, formatEther } from "viem";
+import { useSubgraphMarkets } from "./hooks/useSubgraph";
+import {
+  CONTRACTS,
+  marketAbi,
+  erc20Abi,
+  governorAbi,
+  isConfigured,
+  contractsReady,
+  PAY_WITH_ETH,
+  GOVERNOR_PROPOSAL_ID,
+  PROPOSAL_STATE_LABELS,
+} from "./config";
+import { anvil } from "./chains";
+
+const SUPPORTED_CHAIN_IDS = [anvil.id, arbitrumSepolia.id] as const;
+
+function friendlyError(err: unknown): string {
+  const msg = err instanceof Error ? err.message : String(err);
+  if (msg.includes("User rejected")) return "Transaction cancelled in wallet.";
+  if (msg.includes("insufficient funds")) return "Insufficient balance for gas or tokens.";
+  if (msg.toLowerCase().includes("network")) return "Network error — check RPC connection.";
+  return msg.slice(0, 180);
+}
+
+export default function App() {
+  const { address, isConnected } = useAccount();
+  const { connect, connectors, isPending: connecting } = useConnect();
+  const { disconnect } = useDisconnect();
+  const chainId = useChainId();
+  const { switchChain } = useSwitchChain();
+  const [amount, setAmount] = useState("0.01");
+  const [error, setError] = useState<string | null>(null);
+  const { markets, loading: subgraphLoading } = useSubgraphMarkets();
+
+  const usdcOk = isConfigured(CONTRACTS.usdc);
+  const marketOk = isConfigured(CONTRACTS.sampleMarket);
+
+  const { data: ethBal } = useBalance({ address, query: { enabled: !!address } });
+
+  const { data: usdcBal, refetch: refetchUsdc } = useReadContract({
+    address: CONTRACTS.usdc,
+    abi: erc20Abi,
+    functionName: "balanceOf",
+    args: address ? [address] : undefined,
+    query: { enabled: !!address && usdcOk && !PAY_WITH_ETH },
+  });
+
+  const { data: votes, refetch: refetchVotes } = useReadContract({
+    address: CONTRACTS.pmt,
+    abi: erc20Abi,
+    functionName: "getVotes",
+    args: address ? [address] : undefined,
+    query: { enabled: !!address && isConfigured(CONTRACTS.pmt) },
+  });
+
+  const { data: pmtBal } = useReadContract({
+    address: CONTRACTS.pmt,
+    abi: erc20Abi,
+    functionName: "balanceOf",
+    args: address ? [address] : undefined,
+    query: { enabled: !!address && isConfigured(CONTRACTS.pmt) },
+  });
+
+  const proposalId = GOVERNOR_PROPOSAL_ID;
+  const hasProposal = proposalId > 0n;
+
+  const { data: proposalState, refetch: refetchProposal } = useReadContract({
+    address: CONTRACTS.governor,
+    abi: governorAbi,
+    functionName: "state",
+    args: hasProposal ? [proposalId] : undefined,
+    query: { enabled: hasProposal && isConfigured(CONTRACTS.governor) },
+  });
+
+  const proposalActive = proposalState === 1;
+  const hasVotingPower = votes != null && (votes as bigint) > 0n;
+  const canVote =
+    hasProposal && proposalActive && hasVotingPower && isConfigured(CONTRACTS.governor);
+
+  const { writeContractAsync, isPending } = useWriteContract();
+
+  const wrongChain = isConnected && !SUPPORTED_CHAIN_IDS.includes(chainId as (typeof SUPPORTED_CHAIN_IDS)[number]);
+  const onAnvil = chainId === anvil.id;
+
+  async function mintTestUsdc() {
+    setError(null);
+    if (!address) return;
+    try {
+      await writeContractAsync({
+        address: CONTRACTS.usdc,
+        abi: erc20Abi,
+        functionName: "mint",
+        args: [address, parseUnits("10000", 6)],
+      });
+      await refetchUsdc();
+    } catch (e) {
+      setError(friendlyError(e));
+    }
+  }
+
+  async function buyYes() {
+    setError(null);
+    try {
+      if (!marketOk || !usdcOk) {
+        throw new Error(
+          "Contract addresses missing. Run: ./scripts/deploy-anvil.sh",
+        );
+      }
+
+      if (PAY_WITH_ETH) {
+        const value = parseEther(amount);
+        await writeContractAsync({
+          address: CONTRACTS.sampleMarket,
+          abi: marketAbi,
+          functionName: "buyOutcomeWithEth",
+          args: [0, 1n],
+          value,
+        });
+      } else {
+        const amt = parseUnits(amount, 6);
+        await writeContractAsync({
+          address: CONTRACTS.usdc,
+          abi: erc20Abi,
+          functionName: "approve",
+          args: [CONTRACTS.sampleMarket, amt],
+        });
+        await writeContractAsync({
+          address: CONTRACTS.sampleMarket,
+          abi: marketAbi,
+          functionName: "buyOutcome",
+          args: [0, amt, 1n],
+        });
+        await refetchUsdc();
+      }
+    } catch (e) {
+      setError(friendlyError(e));
+    }
+  }
+
+  async function delegatePmt() {
+    setError(null);
+    if (!address) return;
+    try {
+      await writeContractAsync({
+        address: CONTRACTS.pmt,
+        abi: erc20Abi,
+        functionName: "delegate",
+        args: [address],
+      });
+      await refetchVotes();
+    } catch (e) {
+      setError(friendlyError(e));
+    }
+  }
+
+  async function castVote() {
+    setError(null);
+    try {
+      if (!isConfigured(CONTRACTS.governor)) {
+        throw new Error("Set VITE_GOVERNOR in frontend/.env after deploy.");
+      }
+      if (!hasProposal) {
+        throw new Error("No demo proposal. Re-run ./scripts/deploy-anvil.sh");
+      }
+      if (!hasVotingPower) {
+        throw new Error("Delegate PMT voting power first (button above).");
+      }
+      if (!proposalActive) {
+        const label =
+          proposalState != null
+            ? PROPOSAL_STATE_LABELS[Number(proposalState)] ?? String(proposalState)
+            : "unknown";
+        throw new Error(`Proposal is not Active (state: ${label}).`);
+      }
+      await writeContractAsync({
+        address: CONTRACTS.governor,
+        abi: governorAbi,
+        functionName: "castVote",
+        args: [proposalId, 1],
+      });
+      await refetchProposal();
+    } catch (e) {
+      setError(friendlyError(e));
+    }
+  }
+
+  return (
+    <div className="app">
+      <header>
+        <h1>On-Chain Prediction Market</h1>
+        <p>Option D — CPMM binary markets with DAO governance</p>
+      </header>
+
+      {!isConnected ? (
+        <button
+          disabled={connecting}
+          onClick={() => connect({ connector: connectors[0] })}
+        >
+          Connect MetaMask
+        </button>
+      ) : (
+        <button onClick={() => disconnect()}>Disconnect {address?.slice(0, 6)}…</button>
+      )}
+
+      {!contractsReady && (
+        <div className="banner warn">
+          <strong>Contracts not configured.</strong> Start Anvil, then run:
+          <pre>cd prediction-market{"\n"}./scripts/deploy-anvil.sh</pre>
+          Restart <code>npm run dev</code> after <code>frontend/.env</code> is created.
+        </div>
+      )}
+
+      {wrongChain && (
+        <div className="banner warn">
+          Wrong network. Switch to <strong>Anvil</strong> (local) or <strong>Arbitrum Sepolia</strong>.
+          <button onClick={() => switchChain({ chainId: anvil.id })}>Anvil</button>
+          <button onClick={() => switchChain({ chainId: arbitrumSepolia.id })}>Arbitrum Sepolia</button>
+        </div>
+      )}
+
+      {error && <div className="banner error">{error}</div>}
+
+      <section>
+        <h2>Wallet & governance</h2>
+        <ul>
+          <li>
+            {PAY_WITH_ETH ? "ETH balance" : "USDC balance"}:{" "}
+            {PAY_WITH_ETH
+              ? ethBal != null
+                ? formatEther(ethBal.value)
+                : "—"
+              : usdcBal != null
+                ? formatUnits(usdcBal as bigint, 6)
+                : "—"}
+          </li>
+          <li>PMT balance: {pmtBal != null ? formatUnits(pmtBal as bigint, 18) : "—"}</li>
+          <li>Voting power: {votes != null ? formatUnits(votes as bigint, 18) : "—"} PMT</li>
+          {hasProposal && (
+            <li>
+              Proposal #{proposalId.toString()}:{" "}
+              {proposalState != null
+                ? PROPOSAL_STATE_LABELS[Number(proposalState)] ?? proposalState
+                : "—"}
+            </li>
+          )}
+        </ul>
+        {isConnected && isConfigured(CONTRACTS.pmt) && !hasVotingPower && pmtBal != null && (pmtBal as bigint) > 0n && (
+          <button disabled={isPending} onClick={delegatePmt}>
+            Delegate PMT (enable voting)
+          </button>
+        )}
+        {onAnvil && usdcOk && isConnected && !PAY_WITH_ETH && (
+          <button disabled={isPending} onClick={mintTestUsdc}>
+            Mint 10,000 test USDC
+          </button>
+        )}
+      </section>
+
+      <section>
+        <h2>Trade (on-chain)</h2>
+        {marketOk && (
+          <p className="hint">
+            Market: <code>{CONTRACTS.sampleMarket}</code>
+            {PAY_WITH_ETH && " · payment: native ETH"}
+          </p>
+        )}
+        <label>
+          {PAY_WITH_ETH ? "ETH amount" : "USDC amount"}
+          <input value={amount} onChange={(e) => setAmount(e.target.value)} />
+        </label>
+        <button
+          disabled={!isConnected || wrongChain || isPending || !contractsReady}
+          onClick={buyYes}
+        >
+          Buy YES shares {PAY_WITH_ETH ? "(pay ETH)" : ""}
+        </button>
+        <button
+          disabled={!isConnected || wrongChain || isPending || !canVote}
+          onClick={castVote}
+        >
+          Vote FOR proposal #{hasProposal ? proposalId.toString() : "—"}
+        </button>
+      </section>
+
+      <section>
+        <h2>Markets (The Graph)</h2>
+        {subgraphLoading && <p>Loading indexed markets…</p>}
+        {!subgraphLoading && markets.length === 0 && (
+          <p>No markets indexed yet. Deploy subgraph after testnet deploy.</p>
+        )}
+        <ul>
+          {markets.map((m) => (
+            <li key={m.id}>
+              <strong>{m.question}</strong> — state: {m.state}, trades: {m.tradeCount}
+            </li>
+          ))}
+        </ul>
+      </section>
+    </div>
+  );
+}

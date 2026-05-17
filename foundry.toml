@@ -1,0 +1,31 @@
+[profile.default]
+src = "contracts"
+test = "tests"
+script = "scripts"
+out = "out"
+libs = ["lib"]
+solc = "0.8.24"
+optimizer = true
+optimizer_runs = 200
+via_ir = true
+ffi = true
+fs_permissions = [{ access = "read-write", path = "./frontend" }]
+
+[profile.default.fuzz]
+runs = 256
+
+[profile.default.invariant]
+runs = 64
+depth = 32
+
+[rpc_endpoints]
+arbitrum_sepolia = "${ARBITRUM_SEPOLIA_RPC}"
+base_sepolia = "${BASE_SEPOLIA_RPC_URL}"
+optimism_sepolia = "${OPTIMISM_SEPOLIA_RPC}"
+mainnet = "${MAINNET_RPC}"
+
+[etherscan]
+arbitrum_sepolia = { key = "${ARBISCAN_API_KEY}" }
+# Base Sepolia: use BASESCAN_API_KEY, or ETHERSCAN_API_KEY from https://etherscan.io/myapikey (API v2)
+base_sepolia = { key = "${BASESCAN_API_KEY}", url = "https://api.etherscan.io/v2/api", chain = 84532 }
+optimism_sepolia = { key = "${OPTIMISM_ETHERSCAN_API_KEY}" }
