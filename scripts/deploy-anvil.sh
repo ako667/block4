@@ -16,10 +16,28 @@ fi
 # Shell PRIVATE_KEY often points to an unfunded account — ignore it for local deploy
 unset PRIVATE_KEY
 
-forge script scripts/DeployLocal.s.sol \
+forge script scripts/DeployLocal.s.sol:DeployLocalScript \
+  --sig "runDeploy()" \
   --rpc-url "$RPC" \
   --broadcast \
   --private-key "$ANVIL_KEY"
+
+# Governor.propose needs clock() > 0 (getVotes uses clock() - 1)
+cast rpc anvil_mine 5 --rpc-url "$RPC" >/dev/null
+
+set -a
+# shellcheck disable=SC1091
+source frontend/.deploy-local-state
+set +a
+
+forge script scripts/DeployLocal.s.sol:DeployLocalScript \
+  --sig "runPropose()" \
+  --rpc-url "$RPC" \
+  --broadcast \
+  --private-key "$ANVIL_KEY"
+
+# Proposal becomes Active on the block after propose (votingDelay = 0)
+cast rpc anvil_mine 1 --rpc-url "$RPC" >/dev/null
 
 # Keep Infura key in frontend/.env after local deploy rewrites contract addresses
 if [ -f .env ] && grep -q '^INFURA_API_KEY=' .env; then

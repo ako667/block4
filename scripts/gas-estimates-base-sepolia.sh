@@ -38,9 +38,19 @@ estimate "createMarket" "$FACTORY" \
   "createMarket(string,string,int256,uint8,uint256,uint256)" \
   "Gas benchmark market" "bench" 500000000000 1 9999999999 0
 
-estimate "addLiquidity" "$MARKET" "addLiquidity(uint256)" 1000000
-estimate "buyOutcome" "$MARKET" "buyOutcome(uint8,uint256,uint256)" 0 1000000 1
-estimate "sellOutcome" "$MARKET" "sellOutcome(uint8,uint256,uint256)" 0 1000000 1
+FROM="${FROM:-0x3C44CdDd6b9349c716Df4239024A1b9d47DC6b88}"
+PK="${PK:-0x5de4111afa1a4b949b5e847c483fb4f7efc1f4d412a3b095a9ca2e62f4d3ee65}"
+
+cast send "$USDC" "approve(address,uint256)" "$FACTORY" 2000000000 \
+  --rpc-url "$RPC" --private-key "$PK" >/dev/null 2>&1 || true
+cast send "$USDC" "approve(address,uint256)" "$MARKET" 100000000 \
+  --rpc-url "$RPC" --private-key "$PK" >/dev/null 2>&1 || true
+cast send "$MARKET" "buyOutcome(uint8,uint256,uint256)" 0 1000000 0 \
+  --rpc-url "$RPC" --private-key "$PK" >/dev/null 2>&1 || true
+
+estimate "addLiquidity" "$MARKET" "addLiquidity(uint256)" 1000000 --from "$FROM"
+estimate "buyOutcome" "$MARKET" "buyOutcome(uint8,uint256,uint256)" 0 1000000 0 --from "$FROM"
+estimate "sellOutcome" "$MARKET" "sellOutcome(uint8,uint256,uint256)" 0 500000 0 --from "$FROM"
 estimate "requestResolution" "$MARKET" "requestResolution()"
 estimate "claimWinnings" "$MARKET" "claimWinnings()"
 

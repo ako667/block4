@@ -1,6 +1,6 @@
 specVersion: 0.0.5
 schema:
-  file: ./schema.graphql
+  file: schema.graphql
 dataSources:
   - kind: ethereum
     name: PredictionMarketFactory
@@ -18,14 +18,13 @@ dataSources:
         - ProtocolStats
       abis:
         - name: PredictionMarketFactory
-          file: ./abis/PredictionMarketFactory.json
+          file: PredictionMarketFactory/PredictionMarketFactory.json
         - name: PredictionMarket
-          file: ./abis/PredictionMarket.json
+          file: PredictionMarketFactory/PredictionMarket.json
       eventHandlers:
         - event: MarketCreated(indexed uint256,indexed address,bytes32,string,string)
           handler: handleMarketCreated
-      file: ./src/mapping.ts
-
+      file: PredictionMarketFactory/PredictionMarketFactory.wasm
 templates:
   - kind: ethereum/contract
     name: PredictionMarket
@@ -43,7 +42,7 @@ templates:
         - Resolution
       abis:
         - name: PredictionMarket
-          file: ./abis/PredictionMarket.json
+          file: PredictionMarket/PredictionMarket.json
       eventHandlers:
         - event: OutcomeBought(indexed address,uint8,uint256,uint256)
           handler: handleOutcomeBought
@@ -55,4 +54,4 @@ templates:
           handler: handleLiquidityRemoved
         - event: MarketResolved(uint8)
           handler: handleMarketResolved
-      file: ./src/mapping.ts
+      file: PredictionMarketFactory/PredictionMarketFactory.wasm

@@ -1,7 +1,5 @@
 import { BigInt, Bytes } from "@graphprotocol/graph-ts";
-import {
-  MarketCreated as MarketCreatedEvent,
-} from "../generated/PredictionMarketFactory/PredictionMarketFactory";
+import { MarketCreated as MarketCreatedEvent } from "../generated/PredictionMarketFactory/PredictionMarketFactory";
 import {
   OutcomeBought,
   OutcomeSold,
@@ -9,18 +7,21 @@ import {
   LiquidityRemoved,
   MarketResolved,
 } from "../generated/templates/PredictionMarket/PredictionMarket";
-import { Market, Trade, LiquidityEvent, Resolution, ProtocolStats } from "../generated/schema";
+import { Market, Trade, LiquidityPosition, Resolution, ProtocolStats } from "../generated/schema";
 import { PredictionMarket as MarketTemplate } from "../generated/templates";
 
 export function handleMarketCreated(event: MarketCreatedEvent): void {
   let id = event.params.market.toHexString();
   let market = new Market(id);
+  market.marketId = event.params.marketId;
   market.question = event.params.question;
+  market.category = event.params.category;
   market.strikePrice = BigInt.fromI32(0);
   market.endTime = event.block.timestamp;
   market.reserveYes = BigInt.fromI32(0);
   market.reserveNo = BigInt.fromI32(0);
   market.state = "Open";
+  market.volume = BigInt.fromI32(0);
   market.createdAt = event.block.timestamp;
   market.creator = event.transaction.from;
   market.save();
@@ -49,7 +50,7 @@ export function handleOutcomeBought(event: OutcomeBought): void {
   trade.timestamp = event.block.timestamp;
   trade.txHash = event.transaction.hash;
   trade.save();
-  _bumpVolume(event.params.amountIn);
+  _bumpVolume(event.address.toHexString(), event.params.amountIn);
 }
 
 export function handleOutcomeSold(event: OutcomeSold): void {
@@ -63,10 +64,16 @@ export function handleOutcomeSold(event: OutcomeSold): void {
   trade.timestamp = event.block.timestamp;
   trade.txHash = event.transaction.hash;
   trade.save();
-  _bumpVolume(event.params.amountOut);
+  _bumpVolume(event.address.toHexString(), event.params.amountOut);
 }
 
-function _bumpVolume(amount: BigInt): void {
+function _bumpVolume(marketId: string, amount: BigInt): void {
+  let market = Market.load(marketId);
+  if (market != null) {
+    market.volume = market.volume.plus(amount);
+    market.save();
+  }
+
   let stats = ProtocolStats.load("global");
   if (stats != null) {
     stats.totalTrades = stats.totalTrades.plus(BigInt.fromI32(1));
@@ -76,7 +83,7 @@ function _bumpVolume(amount: BigInt): void {
 }
 
 export function handleLiquidityAdded(event: LiquidityAdded): void {
-  let e = new LiquidityEvent(event.transaction.hash.toHex() + "-" + event.logIndex.toString());
+  let e = new LiquidityPosition(event.transaction.hash.toHex() + "-" + event.logIndex.toString());
   e.market = event.address.toHexString();
   e.provider = event.params.provider;
   e.collateral = event.params.collateral;
@@ -87,7 +94,7 @@ export function handleLiquidityAdded(event: LiquidityAdded): void {
 }
 
 export function handleLiquidityRemoved(event: LiquidityRemoved): void {
-  let e = new LiquidityEvent(event.transaction.hash.toHex() + "-" + event.logIndex.toString());
+  let e = new LiquidityPosition(event.transaction.hash.toHex() + "-" + event.logIndex.toString());
   e.market = event.address.toHexString();
   e.provider = event.params.provider;
   e.collateral = event.params.collateral;

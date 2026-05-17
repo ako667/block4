@@ -80,4 +80,60 @@ input {
   border: 1px solid #334155;
   background: #0f172a;
   color: #e2e8f0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.stat-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.stat-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+  padding: 0.45rem 0;
+  border-bottom: 1px solid #1e293b;
+}
+
+.stat-list li:last-child {
+  border-bottom: none;
+}
+
+.stat-label {
+  flex-shrink: 0;
+  color: #94a3b8;
+}
+
+.stat-value {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  word-break: break-all;
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+
+.hint code {
+  word-break: break-all;
+}
+
+.btn-block {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  margin-top: 0.5rem;
+  margin-right: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+section .actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
 }

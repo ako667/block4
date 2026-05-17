@@ -54,6 +54,8 @@ contract DeployScript is Script {
         timelock.grantRole(timelock.DEFAULT_ADMIN_ROLE(), address(timelock));
         timelock.revokeRole(timelock.DEFAULT_ADMIN_ROLE(), deployer);
 
+        shares.grantRole(shares.DEFAULT_ADMIN_ROLE(), address(factory));
+        marketOracle.grantRole(marketOracle.DEFAULT_ADMIN_ROLE(), address(factory));
         lpVault.grantCollector(address(factory));
         token.delegate(deployer);
 

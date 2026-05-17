@@ -16,14 +16,18 @@ import {GovernanceToken} from "../contracts/governance/GovernanceToken.sol";
 import {LocalMarketGovernor} from "../contracts/governance/LocalMarketGovernor.sol";
 
 /// @notice Deploy full stack to local Anvil + write frontend/.env
-/// forge script scripts/DeployLocal.s.sol --rpc-url http://127.0.0.1:8545 --broadcast
+/// ./scripts/deploy-anvil.sh — runs runDeploy() then runPropose() after mining blocks
 contract DeployLocalScript is Script {
-    function run() external {
-            uint256 deployerKey = uint256(0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80);
-            vm.envOr("PRIVATE_KEY", uint256(0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80));
-        address deployer = vm.addr(deployerKey);
+    uint256 internal constant DEPLOYER_KEY =
+        0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80;
 
-        vm.startBroadcast(deployerKey);
+    function run() external {
+        runDeploy();
+    }
+
+    function runDeploy() public {
+        address deployer = vm.addr(DEPLOYER_KEY);
+        vm.startBroadcast(DEPLOYER_KEY);
 
         MockWETH weth = new MockWETH();
         MockV3Aggregator feed = new MockV3Aggregator(3_500e8, 8);
@@ -68,14 +72,6 @@ contract DeployLocalScript is Script {
             liq
         );
 
-        // Demo proposal (LocalMarketGovernor: votingDelay = 0 → Active immediately)
-        address[] memory targets = new address[](1);
-        targets[0] = marketAddr;
-        uint256[] memory values = new uint256[](1);
-        bytes[] memory calldatas = new bytes[](1);
-        calldatas[0] = abi.encodeWithSignature("setSwapFeeBps(uint256)", uint256(25));
-
-        // PMT for demo voters (Anvil accounts 0–4)
         address[5] memory voters = [
             0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266,
             0x70997970C51812dc3A010C7d01b50e0d17dc79C8,
@@ -87,21 +83,79 @@ contract DeployLocalScript is Script {
             token.transfer(voters[i], 50_000 ether);
         }
         token.delegate(deployer);
-        vm.roll(block.number + 2);
-        uint256 proposalId = governor.propose(targets, values, calldatas, "Demo: set swap fee to 0.25%");
+
         vm.stopBroadcast();
 
+        string memory state = string(
+            abi.encodePacked(
+                "LOCAL_WETH=",
+                vm.toString(address(weth)),
+                "\nLOCAL_PMT=",
+                vm.toString(address(token)),
+                "\nLOCAL_GOVERNOR=",
+                vm.toString(address(governor)),
+                "\nLOCAL_FACTORY=",
+                vm.toString(address(factory)),
+                "\nLOCAL_MARKET=",
+                vm.toString(marketAddr),
+                "\n"
+            )
+        );
+        vm.writeFile("frontend/.deploy-local-state", state);
+        _writeFrontendEnv(address(weth), address(token), address(governor), address(factory), marketAddr, 0);
+
+        console2.log("=== Local deploy OK (contracts on-chain) ===");
+        console2.log("WETH (collateral)", address(weth));
+        console2.log("Market", marketAddr);
+        console2.log("Factory", address(factory));
+        console2.log("Next: runPropose() after anvil_mine");
+    }
+
+    function runPropose() public {
+        address governor = vm.envAddress("LOCAL_GOVERNOR");
+        address marketAddr = vm.envAddress("LOCAL_MARKET");
+        address weth = vm.envAddress("LOCAL_WETH");
+        address token = vm.envAddress("LOCAL_PMT");
+        address factory = vm.envAddress("LOCAL_FACTORY");
+
+        address[] memory targets = new address[](1);
+        targets[0] = marketAddr;
+        uint256[] memory values = new uint256[](1);
+        bytes[] memory calldatas = new bytes[](1);
+        calldatas[0] = abi.encodeWithSignature("setSwapFeeBps(uint256)", uint256(25));
+
+        vm.startBroadcast(DEPLOYER_KEY);
+        uint256 proposalId = LocalMarketGovernor(payable(governor)).propose(
+            targets, values, calldatas, "Demo: set swap fee to 0.25%"
+        );
+        vm.stopBroadcast();
+
+        _writeFrontendEnv(weth, token, governor, factory, marketAddr, proposalId);
+
+        console2.log("=== Demo proposal created ===");
+        console2.log("Demo proposal id", proposalId, "(state should be Active)");
+        console2.log("Wrote frontend/.env - trades use native ETH (buyOutcomeWithEth)");
+    }
+
+    function _writeFrontendEnv(
+        address weth,
+        address token,
+        address governor,
+        address factory,
+        address marketAddr,
+        uint256 proposalId
+    ) internal {
         string memory env = string(
             abi.encodePacked(
                 "VITE_USDC=",
-                vm.toString(address(weth)),
+                vm.toString(weth),
                 "\nVITE_PAY_WITH_ETH=true",
                 "\nVITE_PMT=",
-                vm.toString(address(token)),
+                vm.toString(token),
                 "\nVITE_GOVERNOR=",
-                vm.toString(address(governor)),
+                vm.toString(governor),
                 "\nVITE_FACTORY=",
-                vm.toString(address(factory)),
+                vm.toString(factory),
                 "\nVITE_SAMPLE_MARKET=",
                 vm.toString(marketAddr),
                 "\nVITE_GOVERNOR_PROPOSAL_ID=",
@@ -114,12 +168,5 @@ contract DeployLocalScript is Script {
             env = string(abi.encodePacked(env, "VITE_INFURA_API_KEY=", infuraKey, "\n"));
         }
         vm.writeFile("frontend/.env", env);
-
-        console2.log("=== Local deploy OK ===");
-        console2.log("WETH (collateral)", address(weth));
-        console2.log("Market", marketAddr);
-        console2.log("Factory", address(factory));
-        console2.log("Demo proposal id", proposalId, "(state should be Active)");
-        console2.log("Wrote frontend/.env - trades use native ETH (buyOutcomeWithEth)");
     }
 }

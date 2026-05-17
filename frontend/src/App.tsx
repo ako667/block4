@@ -10,7 +10,8 @@ import {
   useBalance,
 } from "wagmi";
 import { arbitrumSepolia } from "wagmi/chains";
-import { parseUnits, parseEther, formatUnits, formatEther } from "viem";
+import { parseUnits, parseEther } from "viem";
+import { formatAddress, formatEthShort, formatProposalId, formatTokenShort } from "./format";
 import { useSubgraphMarkets } from "./hooks/useSubgraph";
 import {
   CONTRACTS,
@@ -235,25 +236,49 @@ export default function App() {
 
       <section>
         <h2>Wallet & governance</h2>
-        <ul>
+        <ul className="stat-list">
           <li>
-            {PAY_WITH_ETH ? "ETH balance" : "USDC balance"}:{" "}
-            {PAY_WITH_ETH
-              ? ethBal != null
-                ? formatEther(ethBal.value)
-                : "—"
-              : usdcBal != null
-                ? formatUnits(usdcBal as bigint, 6)
-                : "—"}
+            <span className="stat-label">{PAY_WITH_ETH ? "ETH balance" : "USDC balance"}</span>
+            <span
+              className="stat-value"
+              title={
+                PAY_WITH_ETH && ethBal != null
+                  ? `${ethBal.value} wei`
+                  : usdcBal != null
+                    ? String(usdcBal)
+                    : undefined
+              }
+            >
+              {PAY_WITH_ETH
+                ? ethBal != null
+                  ? formatEthShort(ethBal.value)
+                  : "—"
+                : usdcBal != null
+                  ? formatTokenShort(usdcBal as bigint, 6, "USDC")
+                  : "—"}
+            </span>
           </li>
-          <li>PMT balance: {pmtBal != null ? formatUnits(pmtBal as bigint, 18) : "—"}</li>
-          <li>Voting power: {votes != null ? formatUnits(votes as bigint, 18) : "—"} PMT</li>
+          <li>
+            <span className="stat-label">PMT balance</span>
+            <span className="stat-value" title={pmtBal != null ? String(pmtBal) : undefined}>
+              {pmtBal != null ? formatTokenShort(pmtBal as bigint, 18, "PMT") : "—"}
+            </span>
+          </li>
+          <li>
+            <span className="stat-label">Voting power</span>
+            <span className="stat-value" title={votes != null ? String(votes) : undefined}>
+              {votes != null ? formatTokenShort(votes as bigint, 18, "PMT") : "—"}
+            </span>
+          </li>
           {hasProposal && (
             <li>
-              Proposal #{proposalId.toString()}:{" "}
-              {proposalState != null
-                ? PROPOSAL_STATE_LABELS[Number(proposalState)] ?? proposalState
-                : "—"}
+              <span className="stat-label">Proposal</span>
+              <span className="stat-value" title={proposalId.toString()}>
+                #{formatProposalId(proposalId)} ·{" "}
+                {proposalState != null
+                  ? PROPOSAL_STATE_LABELS[Number(proposalState)] ?? proposalState
+                  : "—"}
+              </span>
             </li>
           )}
         </ul>
@@ -273,7 +298,8 @@ export default function App() {
         <h2>Trade (on-chain)</h2>
         {marketOk && (
           <p className="hint">
-            Market: <code>{CONTRACTS.sampleMarket}</code>
+            Market:{" "}
+            <code title={CONTRACTS.sampleMarket}>{formatAddress(CONTRACTS.sampleMarket)}</code>
             {PAY_WITH_ETH && " · payment: native ETH"}
           </p>
         )}
@@ -288,10 +314,12 @@ export default function App() {
           Buy YES shares {PAY_WITH_ETH ? "(pay ETH)" : ""}
         </button>
         <button
+          className="btn-block"
           disabled={!isConnected || wrongChain || isPending || !canVote}
           onClick={castVote}
+          title={hasProposal ? proposalId.toString() : undefined}
         >
-          Vote FOR proposal #{hasProposal ? proposalId.toString() : "—"}
+          Vote FOR proposal #{hasProposal ? formatProposalId(proposalId) : "—"}
         </button>
       </section>
 
